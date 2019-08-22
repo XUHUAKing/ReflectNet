@@ -32,6 +32,7 @@ from tensorpack import *
 import time
 import glob
 from contextlib import contextmanager
+from dataset import RealDataFlow
 import model
 import tensorflow as tf
 
@@ -54,7 +55,7 @@ def benchmark(name="unnamed context"):
 
 
 def main(args):
-
+    logger.auto_set_dir()
     assert os.path.isdir(args.out)
 
     if not os.path.isfile(args.i0):
@@ -65,7 +66,6 @@ def main(args):
         I90 = cv2.imread(ppms[2]).astype(np.float32) / 255.
     else:
         print("****path file exist, the path is correct")
-        print("****I0 path:",args.i0)
         assert os.path.isfile(args.i0)
         assert os.path.isfile(args.i45)
         assert os.path.isfile(args.i90)
@@ -98,45 +98,23 @@ def main(args):
     I90 = I90[None, :, :, :]
     # (1, 1000, 1504, 9)
 
-    pred = OfflinePredictor(PredictConfig(
+    # build dataset
+    dataset_train = RealDataFlow(I0, I45, I90)
+
+    steps_per_epoch = len(dataset_train)
+    config = TrainConfig(
         model=model.Model(model.HSHAPE, model.WSHAPE),
         session_init=get_model_loader('data/checkpoint'),
-        input_names=['I1', 'I2', 'I3'],
-        output_names=['est_lt', 'est_lr', 'I_s', 'I_p']))
-
-    with benchmark('reconstruct'):
-        estT, estR, i_s, i_p = pred(I0, I45, I90)
-
-    def clamp(x):
-        x[x < 0] = 0
-        return x
-
-    estT = clamp(estT[0])
-    estR = clamp(estR[0])
-    i_s = clamp(i_s[0])
-    i_p = clamp(i_p[0])
-
-    cv2.imwrite(os.path.join(args.out, 'ours_%s_s%.2f_T.png' %
-                             (args.prefix, args.scale)), (estT * 255.).clip(0, 255))
-    cv2.imwrite(os.path.join(args.out, 'ours_%s_s%.2f_R.png' %
-                             (args.prefix, args.scale)), (estR * 255.).clip(0, 255))
-
-    print(os.path.join(args.out, 'ours_%s_s%.2f_T.png' % (args.prefix, args.scale)))
-    print(os.path.join(args.out, 'ours_%s_s%.2f_R.png' % (args.prefix, args.scale)))
-
-    cv2.imwrite(os.path.join(args.out, 'ours_%s_s%.2f_degamma_T.png' % (
-        args.prefix, args.scale)), (estT**(1. / 2.2) * 255.).clip(0, 255))
-    cv2.imwrite(os.path.join(args.out, 'ours_%s_s%.2f_degamma_R.png' % (
-        args.prefix, args.scale)), (estR**(1. / 2.2) * 255.).clip(0, 255))
-
-    cv2.imwrite(os.path.join(args.out, 'input_%s_s%.2f_0.png' %
-                             (args.prefix, args.scale)), (I0[0] * 255.))
-    cv2.imwrite(os.path.join(args.out, 'input_%s_s%.2f_1.png' %
-                             (args.prefix, args.scale)), (I45[0] * 255.))
-    cv2.imwrite(os.path.join(args.out, 'input_%s_s%.2f_2.png' %
-                             (args.prefix, args.scale)), (I90[0] * 255.))
-
-    print(estT.shape)
+        # The input source for training. FeedInput is slow, this is just for demo purpose.
+        # In practice it's best to use QueueInput or others. See tutorials for details.
+        data=FeedInput(dataset_train),
+        callbacks=[
+            ModelSaver(),   # save the model after every epoch
+        ],
+        steps_per_epoch=steps_per_epoch,
+        max_epoch=12,
+    )
+    launch_train_with_config(config, SimpleTrainer())
 
 
 if __name__ == '__main__':

@@ -63,16 +63,12 @@ class Model(ModelDesc):
         self.HSHAPE = h
         self.WSHAPE = w
 
-    def _get_inputs(self):
+    def inputs(self):
         return [InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I1'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I2'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I3'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a1'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a2'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a3'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lb'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lr'),
-                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'aoi')]
+                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lt'),
+                InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lr')]
 
     def _network(self, I_s, I_p, I1, I2, I3):
 
@@ -156,14 +152,7 @@ class Model(ModelDesc):
             tf.summary.image('v_all', VT.visualize(),
                              max_outputs=max(30, BATCH_SIZE))
 
-    def _build_graph(self, inputs):
-        # inputs are given within [0, 1]
-        I1, I2, I3, alpha1, alpha2, alpha3,\
-            gt_lr, gt_lt,\
-            AOI_sample = inputs
-
-        AOI_sample = deg2rad(AOI_sample)
-
+    def build_graph(self, I1, I2, I3, gt_lr, gt_lt):
         # project onto canonical view
         I_s, I_p = img_otho_extraction(I1, I2, I3)
         I_s = tf.identity(I_s, name='I_s')
@@ -182,11 +171,16 @@ class Model(ModelDesc):
         est_lr = tf.identity(est_lr, name='est_lr')
 
         if get_current_tower_context().is_training:
-            self._visualize(I_s, I_p, I1, I2, I3, est_lt, est_lr, gt_lt, gt_lr)
+            print("disable visualization...")
+            # self._visualize(I_s, I_p, I1, I2, I3, est_lt, est_lr, gt_lt, gt_lr)
+        return self.cost
 
-    def _get_optimizer(self):
-        lr = symbolic_functions.get_scalar_var(
-            'learning_rate', 5e-3, summary=True)
+    def optimizer(self):
+        # lr = symbolic_functions.get_scalar_var(
+        #     'learning_rate', 5e-3, summary=True)
+        # return tf.train.AdamOptimizer(lr)
+        lr = 5e-3
+        tf.summary.scalar('lr', lr)
         return tf.train.AdamOptimizer(lr)
 
 
