@@ -67,8 +67,12 @@ class Model(ModelDesc):
         return [InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I1'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I2'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'I3'),
+                # InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a1'),
+                # InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a2'),
+                # InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'a3'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lt'),
                 InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, CHANNELS), 'lr')]
+                # InputDesc(tf.float32, (None, self.HSHAPE, self.WSHAPE, 1), 'aoi')
 
     def _network(self, I_s, I_p, I1, I2, I3):
 
@@ -171,14 +175,13 @@ class Model(ModelDesc):
         est_lr = tf.identity(est_lr, name='est_lr')
 
         if get_current_tower_context().is_training:
-            print("disable visualization...")
+            print("disable visualization for now")
             # self._visualize(I_s, I_p, I1, I2, I3, est_lt, est_lr, gt_lt, gt_lr)
         return self.cost
 
     def optimizer(self):
         # lr = symbolic_functions.get_scalar_var(
         #     'learning_rate', 5e-3, summary=True)
-        # return tf.train.AdamOptimizer(lr)
         lr = 5e-3
         tf.summary.scalar('lr', lr)
         return tf.train.AdamOptimizer(lr)

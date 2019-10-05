@@ -36,7 +36,7 @@ import model
 import tensorflow as tf
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"]="1"  # specify which GPU(s) to be used
+os.environ["CUDA_VISIBLE_DEVICES"]="-1"  # specify which GPU(s) to be used
 
 @contextmanager
 def benchmark(name="unnamed context"):
